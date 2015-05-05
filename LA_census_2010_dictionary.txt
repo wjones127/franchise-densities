@@ -1,0 +1,246 @@
+--------------------------------------------------------------------------------
+Codebook for Social Explorer report ID: R10951133
+--------------------------------------------------------------------------------
+
+Contents
+    - Table Summary
+    - Data Dictionary
+    - Citation and Use
+
+
+--------------------------------------------------------------------------------
+Table Summary
+--------------------------------------------------------------------------------
+ 
+Survey:           Census 2010
+Dataset:          Social Explorer Tables
+Tables:
+
+      1. Total Population
+         Universe:  Total population
+         Name:      T1
+         Variables:
+            T001_001:   Total Population
+
+
+      2. Population Density (per sq. mile)
+         Universe:  Total population
+         Name:      T2
+         Variables:
+            T002_001:   Total Population
+            T002_002:   Population Density (per sq. mile)
+            T002_006:   Area (Land)
+
+
+      3. Land Area (sq. miles)
+         Universe:  Area Total
+         Name:      T2A
+         Variables:
+            T02A_001:   Area Total:
+            T02A_002:      Area (Land)
+            T02A_003:      Area (Water)
+
+
+      4. Sex
+         Universe:  Total population
+         Name:      T3
+         Variables:
+            T003_001:   Total Population:
+            T003_002:      Male
+            T003_003:      Female
+
+
+      5. Age
+         Universe:  Total population
+         Name:      T8
+         Variables:
+            T008_001:   Total Population:
+            T008_002:      Under 5 years
+            T008_003:      5 to 9 years
+            T008_004:      10 to 14 years
+            T008_005:      15 to 17 years
+            T008_006:      18 to 24 years
+            T008_007:      25 to 34 years
+            T008_008:      35 to 44 years
+            T008_009:      45 to 54 years
+            T008_010:      55 to 64 years
+            T008_011:      65 and 74 years
+            T008_012:      75 to 84 years
+            T008_013:      85 years and over
+
+
+      6. Race
+         Universe:  Total population
+         Name:      T54
+         Variables:
+            T054_001:   Total population:
+            T054_002:      White alone
+            T054_003:      Black or African American alone
+            T054_004:      American Indian and Alaska Native alone
+            T054_005:      Asian alone
+            T054_006:      Native Hawaiian and Other Pacific Islander alone
+            T054_007:      Some Other Race alone
+            T054_008:      Two or More Races
+
+
+      7. Households By Household Type
+         Universe:  Households
+         Name:      T58
+         Variables:
+            T058_001:   Households:
+            T058_002:      Family households:
+            T058_003:         Married-couple family
+            T058_004:         Other family:
+            T058_005:            Male householder, no wife present
+            T058_006:            Female householder, no husband present
+            T058_007:      Nonfamily households:
+            T058_008:         Householder living alone
+            T058_009:         Householder not living alone
+
+
+      8. Population in Households By Household Type and Relationship
+         Universe:  Total population
+         Name:      T63
+         Variables:
+            T063_001:   Total population:
+            T063_002:      In households:
+            T063_003:         In family households:
+            T063_004:            Householder
+            T063_005:            Spouse
+            T063_006:            Child
+            T063_007:            Grandchild
+            T063_008:            Brother or sister
+            T063_009:            Parent
+            T063_010:            Other relatives
+            T063_011:            Nonrelatives
+            T063_012:         In nonfamily households:
+            T063_013:            Living alone
+            T063_014:            Not living alone
+            T063_015:            Nonrelatives
+            T063_016:      In group quarters:
+            T063_017:         Institutionalized population
+            T063_018:         Noninstitutionalized population
+
+
+      9. Housing Units
+         Universe:  Housing units
+         Name:      T68
+         Variables:
+            T068_001:   Housing units
+
+
+      10. Tenure
+          Universe:  Occupied housing units
+          Name:      T69
+          Variables:
+             T069_001:   Occupied housing units:
+             T069_002:      Owner Occupied
+             T069_003:      Renter occupied
+
+
+
+
+
+ 
+ 
+ 
+--------------------------------------------------------------------------------
+Data Dictionary
+--------------------------------------------------------------------------------
+ 
+Variables 
+      NAME:           Area Name-Legal/Statistical Area Description
+      QName:          Qualifying Name
+      FIPS:           FIPS
+      SUMLEV:         Summary Level
+      GEOCOMP:        Geographic Component
+      STATE:          State (FIPS)
+      COUNTY:         County
+      COUNTYSC:       County Size Code
+      COUSUB:         County Subdivision (FIPS)
+      TRACT:          Census Tract
+      T001_001:       Total Population
+      T002_001:       Total Population
+      T002_002:       Population Density (per sq. mile)
+      T002_006:       Area (Land)
+      T02A_001:       Area Total
+      T02A_002:       Area Total: Area (Land)
+      T02A_003:       Area Total: Area (Water)
+      T003_001:       Total Population
+      T003_002:       Total Population: Male
+      T003_003:       Total Population: Female
+      T008_001:       Total Population
+      T008_002:       Total Population: Under 5 years
+      T008_003:       Total Population: 5 to 9 years
+      T008_004:       Total Population: 10 to 14 years
+      T008_005:       Total Population: 15 to 17 years
+      T008_006:       Total Population: 18 to 24 years
+      T008_007:       Total Population: 25 to 34 years
+      T008_008:       Total Population: 35 to 44 years
+      T008_009:       Total Population: 45 to 54 years
+      T008_010:       Total Population: 55 to 64 years
+      T008_011:       Total Population: 65 and 74 years
+      T008_012:       Total Population: 75 to 84 years
+      T008_013:       Total Population: 85 years and over
+      T054_001:       Total population
+      T054_002:       Total population: White alone
+      T054_003:       Total population: Black or African American alone
+      T054_004:       Total population: American Indian and Alaska Native alone
+      T054_005:       Total population: Asian alone
+      T054_006:       Total population: Native Hawaiian and Other Pacific Islander alone
+      T054_007:       Total population: Some Other Race alone
+      T054_008:       Total population: Two or More Races
+      T058_001:       Households
+      T058_002:       Households: Family households
+      T058_003:       Households: Family households: Married-couple family
+      T058_004:       Households: Family households: Other family
+      T058_005:       Households: Family households: Other family: Male householder, no wife present
+      T058_006:       Households: Family households: Other family: Female householder, no husband present
+      T058_007:       Households: Nonfamily households
+      T058_008:       Households: Nonfamily households: Householder living alone
+      T058_009:       Households: Nonfamily households: Householder not living alone
+      T063_001:       Total population
+      T063_002:       Total population: In households
+      T063_003:       Total population: In households: In family households
+      T063_004:       Total population: In households: In family households: Householder
+      T063_005:       Total population: In households: In family households: Spouse
+      T063_006:       Total population: In households: In family households: Child
+      T063_007:       Total population: In households: In family households: Grandchild
+      T063_008:       Total population: In households: In family households: Brother or sister
+      T063_009:       Total population: In households: In family households: Parent
+      T063_010:       Total population: In households: In family households: Other relatives
+      T063_011:       Total population: In households: In family households: Nonrelatives
+      T063_012:       Total population: In households: In nonfamily households
+      T063_013:       Total population: In households: In nonfamily households: Living alone
+      T063_014:       Total population: In households: In nonfamily households: Not living alone
+      T063_015:       Total population: In households: In nonfamily households: Nonrelatives
+      T063_016:       Total population: In group quarters
+      T063_017:       Total population: In group quarters: Institutionalized population
+      T063_018:       Total population: In group quarters: Noninstitutionalized population
+      T068_001:       Housing units
+      T069_001:       Occupied housing units
+      T069_002:       Occupied housing units: Owner Occupied
+      T069_003:       Occupied housing units: Renter occupied
+
+
+
+
+--------------------------------------------------------------------------------
+Citation and Use of Data
+--------------------------------------------------------------------------------
+ 
+All persons are granted a limited license to use this documentation and the
+accompanying data, subject to the following conditions:
+
+* Publications and research reports employing the data
+  must cite it appropriately. The citation should include the following:
+
+	  www.socialexplorer.com
+	  New York City, NY: Social Explorer 2015
+
+
+* Citations should also include the URL for this report:
+
+    http://www.socialexplorer.com/pub/reportdata/HtmlResults.aspx?reportid=R10951133
+
+If you have any questions contact info@socialexplorer.com

@@ -1,5 +1,5 @@
 ---
-title: "Education"
+title: "Franchise Distributions"
 author: "Will Jones"
 date: "April 1, 2015"
 output: html_document
@@ -10,17 +10,95 @@ This is an R Markdown document. Markdown is a simple formatting syntax for autho
 When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
 ```{r}
-data <- read.csv("performance_report_2012.csv") %>% tbl_df()
-# Schools that received grants for radcial transformations
-improvement.grants <- read.csv("improvement_grants.csv") %>% tbl_df()
-# 2013 STAR test restults
-startest <- read.csv("ca2013_1_csv_v3/ca2013_1_csv_v3.txt") %>% tbl_df()
+# Load all the packages
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(ggmap))
+suppressPackageStartupMessages(library(doParallel))
+suppressPackageStartupMessages(library(magrittr))
+suppressPackageStartupMessages(library(tidyr))
+suppressPackageStartupMessages(library(rgdal))
+
+# Set up parallel processing
+cpuCount <- detectCores() #From the parallel package
+registerDoParallel(cores=cpuCount-1) #Don't take all cores.
 ```
 
-You can also embed plots, for example:
+We will examine 
 
 ```{r, echo=FALSE}
-plot(cars)
+
+la.census <- read.csv('LA_census_2010.csv') %>% tbl_df()
+la.census %<>% 
+  # select only Los Angeles County
+  filter(Geo_COUNTY == 37) %>%
+  rename(population = SE_T001_001,
+         white = SE_T054_002)
+
+la.income <- read.csv('LA_income.csv') %>% tbl_df() %>%
+  filter(Geo_COUNTY == 37) %>%
+  rename(median.income = SE_T057_001,
+         pop.poverty = SE_T118_002)
+
+# Combine the two data frames
+la.census %<>% left_join(la.income, by='Geo_FIPS') %>%
+  select(Geo_FIPS, population, white, median.income, pop.poverty)
+
+# Convert white and poverty to rates in percents
+la.census %<>%
+  mutate(white = white / population * 100,
+         rate.poverty = pop.poverty / population * 100)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Unfortunately we can't look at all of the census tracts. To get accurate results,
+we can only use a search radius less than 50 kilometers. We are also limited to 
+1000 queries per day, so we can't do one query per census tract. So we will
+sample census tracts, find thier center point, and do a search there.
+
+```{r, echo=FALSE, warning=FALSE}
+# Number of census tracts to sample
+n <- 2
+
+LA.shapefile <- readOGR(dsn="los_angeles/", 
+                         layer="eGIS_Demographic_Blocks", 
+                         verbose=FALSE) %>%
+  spTransform(CRS("+proj=longlat +ellps=WGS84"))
+
+LA.data <- LA.shapefile@data %>% tbl_df()
+
+# Subset shapefile to tracts we want to look at
+LA.map <- fortify(LA.shapefile, region="GEOID10") %>% tbl_df() %>%
+  right_join(la.census, by=("FIPS" = "Geo_FIPS"))
+
+# Create a sample of tracts to look at
+
+# Define function to get nearby locations
+getLocations <- function(x, y, radius=10000, query) {
+  # Uses Google Places to find all locations near a place.
+  # Remember we want to over shoot, and then count those that
+  # are actually near the borders of the 
+  #
+  # Args: 
+  #  x: the lattitude of the center from which to search
+  #  y: the longitude of the center from which to search
+  #  radius: the radius of the search, in meters
+  #  query: the name of the franchise to search for
+  #
+  # Returns:
+  #  A dataframe of locations.
+  
+}
+countLocations <- function(polygon, locations, radius=5000) {
+  # Counts the number of locations that are either inside the polygon, or are 
+  # within the given radius of a border.
+  #
+  # Args:
+  #  polygon: a dataframe of edges of the polygon
+  #  locations: a dataframe of the locations, which is returned by getLocations
+  #
+  # Returns: 
+  #  An integer indicating how many locations are near the polygon
+  
+}
+```
+

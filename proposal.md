@@ -4,8 +4,8 @@ These questions don't just apply to McDonald's; Starbuck's, Taco Bell, Target an
 This project will look into these questions, examining connections between demographics of areas and the concentration of locations of particular frachises. The end result will be a web application that allows visitors to explore these relationship graphically.
 
 ## Data
-*Google Places API* will provide the locations of these franchises. The docs for this API can be found [here](https://developers.google.com/places/webservice/search).
-*Census* data will be used to determine demographics factors.
+**Google Places API** will provide the locations of these franchises. The docs for this API can be found [here](https://developers.google.com/places/webservice/search).
+**Census** data will be used to determine demographics factors.
 
 
 ## Variables
