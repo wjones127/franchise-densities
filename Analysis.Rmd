@@ -69,7 +69,6 @@ LA.shapefile <- readOGR(dsn="los_angeles/",
 LA.data <- LA.shapefile@data %>% tbl_df()
 
 # Subset shapefile to tracts we want to look at
-LA.shapefile@data$GEOID10 %<>% as.character()
 LA.map <- fortify(LA.shapefile, region='GEOID10') %>% tbl_df()
 
   right_join(la.census, by=("FIPS" = "Geo_FIPS"))
@@ -100,6 +99,7 @@ getLocations <- function(x, y, query, radius=10000) {
   radius <- 10000
   
   
+  gplaces.key <- ''
   url <- 'https://maps.googleapis.com/maps/api/place/radarsearch/json?'
   url %<>% paste('key=', gplaces.key, '&', sep='')
   url %<>% paste('location=', as.character(x), ',',
