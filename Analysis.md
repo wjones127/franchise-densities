@@ -2,37 +2,28 @@
 Will Jones  
 April 1, 2015  
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
 
-```r
-# Load all the packages
-suppressPackageStartupMessages(library(dplyr))
-suppressPackageStartupMessages(library(ggplot2))
-suppressPackageStartupMessages(library(ggmap))
-suppressPackageStartupMessages(library(doParallel))
-suppressPackageStartupMessages(library(magrittr))
-suppressPackageStartupMessages(library(tidyr))
-suppressPackageStartupMessages(library(rgdal))
-suppressPackageStartupMessages(library(stringr))
-suppressPackageStartupMessages(library(jsonlite))
-suppressPackageStartupMessages(library(RCurl))
+This project examines correlations between the number of Starbuck's locations
+in an area with demographics information---such as ethnic makeup, median income,
+poverty level. For the locations, this project examines census tracts in Los
+Angeles County.
 
-
-# Set up parallel processing
-cpuCount <- detectCores() #From the parallel package
-registerDoParallel(cores=cpuCount-1) #Don't take all cores.
-```
-
-We will examine 
+Census data is provided by the 2010 census for estimates of population and
+ethnic makeup, while we use ACS five-year estimates for median income and
+poverty level.
 
 
 
-
+Here are some histograms of the basic demographic data:
 
 ![](Analysis_files/figure-html/unnamed-chunk-3-1.png) 
+
+
+
+
+
+![](Analysis_files/figure-html/unnamed-chunk-4-1.png) 
 
 Now that we have a selection of census tracts to examine, we need to find how
 many Starbucks locations are nearby each. We can start by constructing a table
@@ -57,7 +48,13 @@ ggplot(LA.map) +
   theme_bw()
 ```
 
-![](Analysis_files/figure-html/unnamed-chunk-4-1.png) 
+![](Analysis_files/figure-html/unnamed-chunk-5-1.png) 
+
+These geographic centers are not perfect. Tracts who have borders that do not
+have evenly distributed vertices on their edges (such as ones where one side is
+particularly jagged) tend to have centers that are too close to the edge. For
+most of the median and small census tracts, they will work just fine.
+
 
 ```r
 # Define function to get nearby locations
@@ -97,7 +94,14 @@ getLocations <- function(x, y, query, radius=10000) {
 }
 
 test <- getLocations(34.0429419, -118.2657636, 'starbucks coffee')
+```
 
+```
+## Warning in readLines("Google_API_key.txt"): incomplete final line found on
+## 'Google_API_key.txt'
+```
+
+```r
 locations <- data_frame(place_id = character(),
                         lat = numeric(),
                         long = numeric())
@@ -111,8 +115,19 @@ for (i in 1:nrow(rows)) {
                                 search.text)
   locations %<>% union(new.locations)
 }
-  
+```
 
+```
+## Warning in readLines("Google_API_key.txt"): incomplete final line found on
+## 'Google_API_key.txt'
+```
+
+```
+## Warning in readLines("Google_API_key.txt"): incomplete final line found on
+## 'Google_API_key.txt'
+```
+
+```r
 ggplot() +
   geom_polygon(data = LA.map,
                aes(fill=in.sample,
@@ -123,7 +138,7 @@ ggplot() +
   theme_bw()
 ```
 
-![](Analysis_files/figure-html/unnamed-chunk-4-2.png) 
+![](Analysis_files/figure-html/unnamed-chunk-6-1.png) 
 
 
 

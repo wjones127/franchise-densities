@@ -7,11 +7,7 @@ output:
     keep_md: yes
 ---
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r}
+```{r, echo=FALSE, warning=FALSE}
 # Load all the packages
 suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(ggplot2))
@@ -30,7 +26,14 @@ cpuCount <- detectCores() #From the parallel package
 registerDoParallel(cores=cpuCount-1) #Don't take all cores.
 ```
 
-We will examine 
+This project examines correlations between the number of Starbuck's locations
+in an area with demographics information---such as ethnic makeup, median income,
+poverty level. For the locations, this project examines census tracts in Los
+Angeles County.
+
+Census data is provided by the 2010 census for estimates of population and
+ethnic makeup, while we use ACS five-year estimates for median income and
+poverty level.
 
 ```{r, echo=FALSE}
 # Get 2010 census data
@@ -65,6 +68,18 @@ la.census %<>%
   mutate(white = white / population * 100,
          rate.poverty = pop.poverty / population * 100)
 ```
+
+Here are some histograms of the basic demographic data:
+
+```{r, echo=FALSE}
+par(mfrow=c(2,2))
+hist(la.census$white, main="Percentage of Population that is White")
+hist(la.census$rate.poverty, main="Percentage of Population Below Poverty Level")
+hist(la.census$median.income, main="Median Income")
+hist(la.census$population, main="Population")
+```
+
+
 
 
 
@@ -128,8 +143,14 @@ ggplot(LA.map) +
   geom_point(aes(x = center.x, y = center.y)) + 
   coord_map() +
   theme_bw()
+```
 
+These geographic centers are not perfect. Tracts who have borders that do not
+have evenly distributed vertices on their edges (such as ones where one side is
+particularly jagged) tend to have centers that are too close to the edge. For
+most of the median and small census tracts, they will work just fine.
 
+```{r}
 # Define function to get nearby locations
 getLocations <- function(x, y, query, radius=10000) {
   # Uses Google Places to find all locations near a place.
