@@ -1,17 +1,13 @@
----
-title: "Franchise Distributions"
-author: "Will Jones"
-date: "April 1, 2015"
-output:
-  html_document:
-    keep_md: yes
----
+# Franchise Distributions
+Will Jones  
+April 1, 2015  
 
 This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
 When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
-```{r}
+
+```r
 # Load all the packages
 suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(ggplot2))
@@ -32,88 +28,19 @@ registerDoParallel(cores=cpuCount-1) #Don't take all cores.
 
 We will examine 
 
-```{r, echo=FALSE}
-# Get 2010 census data
-la.census <- read.csv('LA_census_2010.csv', 
-                      colClasses=c(rep("character", 10), 
-                                   rep("numeric", 62))) %>% 
-                        tbl_df()
-la.census %<>% 
-  # select only Los Angeles County
-  filter(Geo_COUNTY == '037') %>%
-  rename(population = SE_T001_001,
-         white = SE_T054_002)
-
-# Get income census data (from 5-year estimates)
-la.income <- read.csv('LA_income.csv',
-                      colClasses=c(rep('character', 5),
-                                   rep('factor', 15),
-                                   rep('numeric', 82))) %>%
-  tbl_df() %>%
-  filter(Geo_COUNTY == '037') %>%
-  rename(median.income = SE_T057_001,
-         pop.poverty = SE_T118_002)
-
-# Combine the two data frames
-la.census %<>% left_join(la.income, by='Geo_FIPS') %>%
-  select(Geo_FIPS, population, white, median.income, pop.poverty)
-
-la.census$Geo_FIPS %<>% as.character()
-
-# Convert white and poverty to rates in percents
-la.census %<>%
-  mutate(white = white / population * 100,
-         rate.poverty = pop.poverty / population * 100)
-```
 
 
 
-```{r, echo=FALSE, warning=FALSE}
-# Number of census tracts to sample
-n <- 2
-search.text <- 'Starbucks Coffee'
 
-# Loading the shape file
-# LA.shapefile <- readOGR(dsn="los_angeles/", 
-#                         layer="eGIS_Demographic.EGIS", 
-#                        verbose=FALSE) %>%
-#  spTransform(CRS("+proj=longlat +ellps=WGS84"))
-
-# LA.data <- LA.shapefile@data %>% tbl_df()
-
-# I wasn't able to get this to work on my R installation, but Albert Kim was
-# able to do so and save it as a data frame.
-# LA.map <- fortify(LA.shapefile, region='GEOID10') %>% tbl_df()
-load('LA.RData') # saved as LA.map
-
-# Subset shapefile to tracts we want to look at
-LA.map %<>% 
-  inner_join(la.census, by=c('id' = 'Geo_FIPS')) %>%
-  filter(lat > 33.5)
-
-# Add in data giving the geographic centers of the 
-
-# Create a sample of FIPS to look at
-LA.sample <- la.census %>%
-  sample_n(n) %>%
-  .$Geo_FIPS
-
-LA.map %<>% mutate(in.sample = id %in% LA.sample)
-
-# Plot which tracts we are sampling
-ggplot(LA.map, aes(x=long, y=lat, group=group)) +
-  geom_polygon(aes(fill=in.sample )) +
-  coord_map() +
-  theme_bw()
-
-```
+![](Analysis_files/figure-html/unnamed-chunk-3-1.png) 
 
 Now that we have a selection of census tracts to examine, we need to find how
 many Starbucks locations are nearby each. We can start by constructing a table
 of locations, queried using a radar search centered at the geographic center of
 the sampled census tracts.
 
-```{r, warning=FALSE}
+
+```r
 # Get the geographic centers of each of the polygons
 centers <- LA.map %>%
   group_by(id) %>%
@@ -128,8 +55,11 @@ ggplot(LA.map) +
   geom_point(aes(x = center.x, y = center.y)) + 
   coord_map() +
   theme_bw()
+```
 
+![](Analysis_files/figure-html/unnamed-chunk-4-1.png) 
 
+```r
 # Define function to get nearby locations
 getLocations <- function(x, y, query, radius=10000) {
   # Uses Google Places to find all locations near a place.
@@ -191,14 +121,16 @@ ggplot() +
              aes(x = long, y = lat)) + 
   coord_map() +
   theme_bw()
-
 ```
 
+![](Analysis_files/figure-html/unnamed-chunk-4-2.png) 
 
 
 
 
-```{r}
+
+
+```r
 countLocations <- function(polygon, locations, radius=5000) {
   # Counts the number of locations that are either inside the polygon, or are 
   # within the given radius of a border.
