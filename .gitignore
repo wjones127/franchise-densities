@@ -3,3 +3,5 @@
 .Rproj.user
 .DS_Store
 Google_API_key.txt
+.Rhistory
+.RData
