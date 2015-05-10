@@ -73,8 +73,8 @@ Here are some histograms of the basic demographic data:
 
 ```{r, echo=FALSE}
 par(mfrow=c(2,2))
-hist(la.census$white, main="Percentage of Population that is White")
-hist(la.census$rate.poverty, main="Percentage of Population Below Poverty Level")
+hist(la.census$white, main="White % Population")
+hist(la.census$rate.poverty, main="% in Poverty")
 hist(la.census$median.income, main="Median Income")
 hist(la.census$population, main="Population")
 ```
@@ -124,31 +124,70 @@ ggplot(LA.map, aes(x=long, y=lat, group=group)) +
 ```
 
 Now that we have a selection of census tracts to examine, we need to find how
-many Starbucks locations are nearby each. We can start by constructing a table
-of locations, queried using a radar search centered at the geographic center of
-the sampled census tracts.
+many Starbucks locations are nearby each. To get all the relevant locations in
+the area, we can do a series of searches on Google around specially chosen
+points. We can do this with 24 radar searches with radii of 13 kilometers. The
+maximum radius is 50km, but this increases the likelihood that we will miss
+locations, for the API call only returns up to 200 locations at once.(The
+function here to draw circles was adapted from code written by
+Gregoire Vincke, in a 
+[Stack Overflow answer](http://stackoverflow.com/a/29133886/4645559).)
+```{r}
+makeCircle <- function(LonDec, LatDec, Km, group) {#Corrected function
+    #LatDec = latitude in decimal degrees of the center of the circle
+    #LonDec = longitude in decimal degrees
+    #Km = radius of the circle in kilometers
+    ER <- 6371 #Mean Earth radius in kilometers. Change this to 3959 and you will have your function working in miles.
+    AngDeg <- seq(1:360) #angles in degrees 
+    Lat1Rad <- LatDec*(pi/180)#Latitude of the center of the circle in radians
+    Lon1Rad <- LonDec*(pi/180)#Longitude of the center of the circle in radians
+    AngRad <- AngDeg*(pi/180)#angles in radians
+    Lat2Rad <-asin(sin(Lat1Rad)*cos(Km/ER)+cos(Lat1Rad)*sin(Km/ER)*cos(AngRad)) #Latitude of each point of the circle rearding to angle in radians
+    Lon2Rad <- Lon1Rad+atan2(sin(AngRad)*sin(Km/ER)*cos(Lat1Rad),cos(Km/ER)-sin(Lat1Rad)*sin(Lat2Rad))#Longitude of each point of the circle rearding to angle in radians
+    Lat2Deg <- Lat2Rad*(180/pi)#Latitude of each point of the circle rearding to angle in degrees (conversion of radians to degrees deg = rad*(180/pi) )
+    Lon2Deg <- Lon2Rad*(180/pi)#Longitude of each point of the circle rearding to angle in degrees (conversion of radians to degrees deg = rad*(180/pi) )
+    # output dataframe of locations
+    return(data_frame(long = Lon2Deg, lat = Lat2Deg, group = group))
+}
 
-```{r, warning=FALSE}
-# Get the geographic centers of each of the polygons
-centers <- LA.map %>%
-  group_by(id) %>%
-  summarise(center.x = mean(long),
-            center.y = mean(lat))
+LA.plot <- ggplot() +
+  geom_polygon(aes(x = long, y = lat, group=group), data=LA.map)
 
-LA.map %<>% left_join(centers, by=c('id' = 'id'))
+search.centers <- data_frame(
+  long = c(seq(-118.6, -117.75, length.out=6),
+           seq(-118.6, -117.74, length.out=5),
+           seq(-118.85, -117.75, length.out=7),
+           seq(-118.4, -117.85, length.out = 4),
+           seq(-118.31, -118.13, length.out = 2)
+           ),
+  lat = c(rep(34.41, 6),
+          rep(34.24, 5),
+          rep(34.085, 7),
+          rep(33.95, 4),
+          rep(33.78, 2)))
 
-ggplot(LA.map) +
-  geom_polygon(aes(fill=in.sample,
-                   x=long, y=lat, group=group)) +
-  geom_point(aes(x = center.x, y = center.y)) + 
-  coord_map() +
-  theme_bw()
+circles <- data_frame(long = numeric(), lat = numeric(),
+           group = integer())
+
+for (i in 1:nrow(search.centers)) {
+  long <- search.centers$long[i]
+  lat <- search.centers$lat[i]
+  radius <- 13 #km
+  circles %<>% bind_rows(makeCircle(long, lat, radius, i))
+}
+
+LA.plot + 
+  geom_point(aes(x = long, y = lat), data=search.centers,
+             color = 'red')  + 
+  geom_polygon(aes(x = long, y = lat, group=group), data=circles,
+               color='red', fill = 'red', linetype='dotted',
+               alpha=0.2) + 
+  labs(title = "Radar Search Locations")
+
+
 ```
 
-These geographic centers are not perfect. Tracts who have borders that do not
-have evenly distributed vertices on their edges (such as ones where one side is
-particularly jagged) tend to have centers that are too close to the edge. For
-most of the median and small census tracts, they will work just fine.
+
 
 ```{r}
 # Define function to get nearby locations
@@ -177,28 +216,36 @@ getLocations <- function(x, y, query, radius=10000) {
   url %<>% paste('keyword=', query, sep='')
   
   data <- url %>% getURL() %>% fromJSON()
-
   
-  data %<>% .$results %>% as.data.frame()
-  
-  output <- data_frame(place_id = data$place_id,
-                       lat = data$geometry$location$lat,
-                       long = data$geometry$location$lng)
-  return(output) 
-}
+  if (data$status != "ZERO_RESULTS") {
+    
+    data %<>% .$results %>% as.data.frame()
+    
+    output <- data_frame(place_id = data$place_id,
+                         lat = data$geometry$location$lat,
+                         long = data$geometry$location$lng)
+    return(output) 
+    } else {
+      return(data_frame(place_id = character(),
+                        lat = numeric(),
+                        long = numeric()))
+      }
+  }
 
-test <- getLocations(34.0429419, -118.2657636, 'starbucks coffee')
+# test <- getLocations(34.0429419, -118.2657636, 'starbucks coffee')
+
+search.text <- "Starbucks Coffee"
 
 locations <- data_frame(place_id = character(),
                         lat = numeric(),
                         long = numeric())
 
-rows <- centers %>% filter(id %in% LA.sample)
-
-for (i in 1:nrow(rows)) {
-  place <- rows[i,]
-  new.locations <- getLocations(place$center.y,
-                                place$center.x,
+for (i in 1:nrow(search.centers)) {
+  long <- search.centers$long[i]
+  lat <- search.centers$lat[i]
+  
+  new.locations <- getLocations(lat,
+                                long,
                                 search.text)
   locations %<>% union(new.locations)
 }
@@ -206,39 +253,98 @@ for (i in 1:nrow(rows)) {
 
 ggplot() +
   geom_polygon(data = LA.map,
-               aes(fill=in.sample,
-                   x=long, y=lat, group=group)) +
+               aes(x=long, y=lat, group=group)) +
   geom_point(data = locations,
-             aes(x = long, y = lat)) + 
+             aes(x = long, y = lat),
+             color = 'green') + 
   coord_map() +
-  theme_bw()
+  theme_bw() + 
+  labs(title = "Locations of Starbucks in Los Angeles County")
 
 ```
 
+Notice there are some areas with no locations. To the north is Angeles National
+Forest, and the western stretch is Santa Monica Mountains Recreational Area. In
+some areas, that are likely less populated, the locations seem to align with
+whatever freeways are nearby.
 
-
-
+Now we need to calculate how many Starbuck's locations are near each census
+tract.
 
 ```{r}
-countLocations <- function(polygon, locations, radius=5000) {
-  # Counts the number of locations that are either inside the polygon, or are 
-  # within the given radius of a border.
-  #
-  # Args:
-  #  polygon: a dataframe of edges of the polygon
-  #  locations: a dataframe of the locations, which is returned by getLocations
-  #
-  # Returns: 
-  #  An integer indicating how many locations are near the polygon
+  countLocations <- function(polygon, locations, radius=1) {
+    # Counts the number of locations that are either inside the polygon, or are 
+    # within the given radius of a border.
+    #
+    # Args:
+    #  polygon: a dataframe of edges of the polygon
+    #  locations: a dataframe of the locations, which is returned by getLocations
+    #  radius: a radius in km to be the max valide distance from accessible location
+    #
+    # Returns: 
+    #  An integer indicating how many locations are near the polygon
+    
+    # First, check if the point is actually inside the polygon
+    output <- point.in.polygon(locations$long, locations$lat, 
+                     polygon$long, polygon$lat)
+    
+    # If that doesn't work, check whether they are within a certain radius of the
+    # edges of of polygon.
+    
+    # Convert radius to long and lat radius
+    earth.radius <- 6371 # km
+    deg.to.rad <- pi/180
+    rad.to.deg <- 180/pi
+    approx.lat <- mean(polygon$lat) # lat at census tract
+    radius.lat <- ( radius/ earth.radius) * rad.to.deg
+    radius.at.lat <- earth.radius * cos(approx.lat * deg.torad)
+    radius.long <- (radius / radius.at.lat) * rad.to.deg
+    
+    for (i in 1:nrow(locations)) {
+      if (output[i] == FALSE) {
+        location <- locations[i,]
+        long <- location$long
+        lat <- location$lat
+        
+        # Check if there is even a chance of intersection
+        polygon.long.range <- range(polygon$long) + (-1,1) * radius.long
+        polygon.lat.range <- range(polygon$lat) + (-1, 1) * radius.lat
+        in.int <- function(x,y) y[1] <= x & x <= y[2]
+        nearby <- (int.int(long, polygon.long.range) &
+          in.int(lat, polygon.lat.range))
+        
+        if (nearby) {
+          # Then make a circle and check all the points
+          print('making circles')
+          circle.points <- makeCircle(long, lat, radius, 1)
+          output[i] <- (sum(point.in.polygon(long, lat, 
+                                             polygon$long,
+                                             polygon$lat)) > 0)
+        }
+        
+      }
+    }
+    
+    output %>% sum() %>% return()
+  }
   
-  # First, check if the point is actually inside the polygon
-  output <- point.in.polygon(locations$lat, locations$long, 
-                   polygon$lat, polygon$long)
-  
-  # If that doesn't work, check whether they are within a certain radius of the
-  # edges of of polygon.
-  
-  
-}
+la.census$sb.count = numeric(length = nrow(la.census))  
+
+  for (i in 1:nrow(la.census)) {
+    row <- la.census[i,]
+    FIPS <- row$Geo_FIPS
+    polygon <- LA.map %>% filter(id == FIPS)
+    la.census[i,]$sb.count <- countLocations(polygon, locations))
+  }
+
+
 ```
+
+TO DO:
+* Get Histogram of starbucks
+* Determine distribution of Starbucks
+* For each variable, do Monte Carlo simlulation to determine whether they are
+  correlated. Make each variable into a categorical variable.
+
+
 
