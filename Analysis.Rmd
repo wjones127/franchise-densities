@@ -106,7 +106,11 @@ load('LA.RData') # saved as LA.map
 # Subset shapefile to tracts we want to look at
 LA.map %<>% 
   inner_join(la.census, by=c('id' = 'Geo_FIPS')) %>%
-  filter(lat > 33.5)
+  filter(lat > 33.5) # Get rid of weird census tracts to the south
+
+the.FIPS <- unique(LA.map$id)
+# Make sure we have an equal number of census tracts between the two
+la.census %<>% filter(Geo_FIPS %in% the.FIPS)
 ```
 
 Now that we have a selection of census tracts to examine, we need to find how
@@ -118,7 +122,7 @@ locations, for the API call only returns up to 200 locations at once.(The
 function here to draw circles was adapted from code written by
 Gregoire Vincke, in a 
 [Stack Overflow answer](http://stackoverflow.com/a/29133886/4645559).)
-```{r}
+```{r, echo=FALSE}
 makeCircle <- function(LonDec, LatDec, Km, group) {#Corrected function
     #LatDec = latitude in decimal degrees of the center of the circle
     #LonDec = longitude in decimal degrees
@@ -175,7 +179,7 @@ LA.plot +
 
 
 
-```{r}
+```{r, echo=FALSE}
 # Define function to get nearby locations
 getLocations <- function(x, y, query, radius=10000) {
   # Uses Google Places to find all locations near a place.
@@ -260,7 +264,7 @@ whatever freeways are nearby.
 Now we need to calculate how many Starbuck's locations are near each census
 tract.
 
-```{r}
+```{r, echo=FALSE}
 countLocations <- function(polygon, locations, radius=2) {
   # Counts the number of locations that are either inside the polygon, or are 
   # within the given radius of a border.
@@ -346,17 +350,20 @@ getLocationCount <- function (row.iter) {
   countLocations(polygon, locations, radius=2)
   }
 
+#loc.count.result <- foreach(i=1:nrow(la.census), .combine=c) %dopar%
+#  getLocationCount(i)
 
-loc.count.result <- foreach(i=1:nrow(la.census), .combine=c) %dopar%
-  getLocationCount(i)
 
+#la.census$sb.count <- loc.count.result
 
-la.census$sb.count <- loc.count.result
+#save(la.census, file='census_with_counts.RData')
+load('census_with_counts.RData')
 
 qplot(x = la.census$sb.count, title="Histogram of # of Starbuck's")
 ```
 
 TO DO:
+
 * Get Histogram of starbucks
 * Determine distribution of Starbucks
 * For each variable, do Monte Carlo simlulation to determine whether they are
