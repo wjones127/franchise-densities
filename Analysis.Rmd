@@ -19,6 +19,8 @@ suppressPackageStartupMessages(library(rgdal))
 suppressPackageStartupMessages(library(stringr))
 suppressPackageStartupMessages(library(jsonlite))
 suppressPackageStartupMessages(library(RCurl))
+suppressPackageStartupMessages(library(rgeos))
+
 
 
 # Set up parallel processing
@@ -105,22 +107,6 @@ load('LA.RData') # saved as LA.map
 LA.map %<>% 
   inner_join(la.census, by=c('id' = 'Geo_FIPS')) %>%
   filter(lat > 33.5)
-
-# Add in data giving the geographic centers of the 
-
-# Create a sample of FIPS to look at
-LA.sample <- la.census %>%
-  sample_n(n) %>%
-  .$Geo_FIPS
-
-LA.map %<>% mutate(in.sample = id %in% LA.sample)
-
-# Plot which tracts we are sampling
-ggplot(LA.map, aes(x=long, y=lat, group=group)) +
-  geom_polygon(aes(fill=in.sample )) +
-  coord_map() +
-  theme_bw()
-
 ```
 
 Now that we have a selection of census tracts to examine, we need to find how
@@ -236,20 +222,23 @@ getLocations <- function(x, y, query, radius=10000) {
 
 search.text <- "Starbucks Coffee"
 
-locations <- data_frame(place_id = character(),
-                        lat = numeric(),
-                        long = numeric())
+#locations <- data_frame(place_id = character(),
+#                        lat = numeric(),
+#                        long = numeric())
 
-for (i in 1:nrow(search.centers)) {
-  long <- search.centers$long[i]
-  lat <- search.centers$lat[i]
+#for (i in 1:nrow(search.centers)) {
+#  long <- search.centers$long[i]
+#  lat <- search.centers$lat[i]
+#  
+#  new.locations <- getLocations(lat,
+#                                long,
+#                                search.text)
+#  locations %<>% union(new.locations)
+#}
   
-  new.locations <- getLocations(lat,
-                                long,
-                                search.text)
-  locations %<>% union(new.locations)
-}
-  
+# Saved Locations
+#save(locations, file='sblocations.RData')
+load('sblocations.RData')
 
 ggplot() +
   geom_polygon(data = LA.map,
@@ -272,72 +261,99 @@ Now we need to calculate how many Starbuck's locations are near each census
 tract.
 
 ```{r}
-  countLocations <- function(polygon, locations, radius=1) {
-    # Counts the number of locations that are either inside the polygon, or are 
-    # within the given radius of a border.
-    #
-    # Args:
-    #  polygon: a dataframe of edges of the polygon
-    #  locations: a dataframe of the locations, which is returned by getLocations
-    #  radius: a radius in km to be the max valide distance from accessible location
-    #
-    # Returns: 
-    #  An integer indicating how many locations are near the polygon
-    
-    # First, check if the point is actually inside the polygon
-    output <- point.in.polygon(locations$long, locations$lat, 
-                     polygon$long, polygon$lat)
-    
-    # If that doesn't work, check whether they are within a certain radius of the
-    # edges of of polygon.
-    
-    # Convert radius to long and lat radius
-    earth.radius <- 6371 # km
-    deg.to.rad <- pi/180
-    rad.to.deg <- 180/pi
-    approx.lat <- mean(polygon$lat) # lat at census tract
-    radius.lat <- ( radius/ earth.radius) * rad.to.deg
-    radius.at.lat <- earth.radius * cos(approx.lat * deg.torad)
-    radius.long <- (radius / radius.at.lat) * rad.to.deg
-    
-    for (i in 1:nrow(locations)) {
-      if (output[i] == FALSE) {
-        location <- locations[i,]
-        long <- location$long
-        lat <- location$lat
-        
-        # Check if there is even a chance of intersection
-        polygon.long.range <- range(polygon$long) + (-1,1) * radius.long
-        polygon.lat.range <- range(polygon$lat) + (-1, 1) * radius.lat
-        in.int <- function(x,y) y[1] <= x & x <= y[2]
-        nearby <- (int.int(long, polygon.long.range) &
-          in.int(lat, polygon.lat.range))
-        
-        if (nearby) {
-          # Then make a circle and check all the points
-          print('making circles')
-          circle.points <- makeCircle(long, lat, radius, 1)
-          output[i] <- (sum(point.in.polygon(long, lat, 
-                                             polygon$long,
-                                             polygon$lat)) > 0)
+countLocations <- function(polygon, locations, radius=2) {
+  # Counts the number of locations that are either inside the polygon, or are 
+  # within the given radius of a border.
+  #
+  # Args:
+  #  polygon: a dataframe of edges of the polygon
+  #  locations: a dataframe of the locations, which is returned by getLocations
+  #  radius: a radius in km to be the max valide distance from accessible location
+  #
+  # Returns: 
+  #  An integer indicating how many locations are near the polygon
+  
+  # First, check if the point is actually inside the polygon
+  output <- point.in.polygon(locations$long, locations$lat, 
+                             polygon$long, polygon$lat)
+  
+  # If that doesn't work, check whether they are within a certain radius of the
+  # edges of of polygon.
+  
+  # Convert radius to long and lat radius
+  earth.radius <- 6371 # km
+  deg.to.rad <- pi/180
+  rad.to.deg <- 180/pi
+  approx.lat <- mean(polygon$lat) # lat at census tract
+  radius.lat <- ( radius/ earth.radius) * rad.to.deg
+  radius.at.lat <- earth.radius * cos(approx.lat * deg.to.rad)
+  radius.long <- (radius / radius.at.lat) * rad.to.deg
+  
+  for (i in 1:nrow(locations)) {
+    if (output[i] == FALSE) {
+      location <- locations[i,]
+      long <- location$long
+      lat <- location$lat
+      
+      # Check if there is even a chance of intersection
+      polygon.long.range <- range(polygon$long) + c(-1,1) * radius.long
+      polygon.lat.range <- range(polygon$lat) + c(-1, 1) * radius.lat
+      in.int <- function(x,y) y[1] <= x & x <= y[2]
+      nearby <- (in.int(long, polygon.long.range) &
+                   in.int(lat, polygon.lat.range))
+      
+      if (nearby) {
+        # Then make a circle and check all the points
+        circle.points <- makeCircle(long, lat, radius, 1)
+        # Now we check if the circle and polygon over lap. Looks overly
+        # complicated? It is. Thanks a lot sp package...
+        circle <- cbind(circle.points$long, circle.points$lat) %>%
+          Polygon() %>%
+          list() %>% Polygons(1) %>%
+          list() %>% SpatialPolygons()
+        tract <- cbind(polygon$long, polygon$lat) %>%
+          Polygon() %>%
+          list() %>% Polygons(2) %>%
+          list() %>% SpatialPolygons()
+        overlaps <- gOverlaps(circle, tract)
+        contains <- gContains(circle, tract) | gContains(tract, circle)
+        output[i] <- overlaps | contains
+        #print(gOverlaps(circle, tract))
         }
-        
+      
       }
     }
-    
-    output %>% sum() %>% return()
+  
+  output %>% sum() %>% return()
   }
   
+
 la.census$sb.count = numeric(length = nrow(la.census))  
 
-  for (i in 1:nrow(la.census)) {
-    row <- la.census[i,]
-    FIPS <- row$Geo_FIPS
-    polygon <- LA.map %>% filter(id == FIPS)
-    la.census[i,]$sb.count <- countLocations(polygon, locations))
+
+# Single thread version
+#  for (i in 1:(nrow(la.census)) ) {
+#    row <- la.census[i,]
+#    FIPS <- row$Geo_FIPS
+#    polygon <- LA.map %>% filter(id == FIPS)
+#    la.census[i,]$sb.count <- countLocations(polygon, locations)
+#  }
+
+getLocationCount <- function (row.iter) {
+  obs <- la.census[row.iter,]
+  FIPS <- obs$Geo_FIPS
+  polygon <- LA.map %>% filter(id == FIPS)
+  countLocations(polygon, locations, radius=2)
   }
 
 
+loc.count.result <- foreach(i=1:nrow(la.census), .combine=c) %dopar%
+  getLocationCount(i)
+
+
+la.census$sb.count <- loc.count.result
+
+qplot(x = la.census$sb.count, title="Histogram of # of Starbuck's")
 ```
 
 TO DO:
