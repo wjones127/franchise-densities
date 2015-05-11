@@ -33,6 +33,8 @@ in an area with demographics information---such as ethnic makeup, median income,
 poverty level. For the locations, this project examines census tracts in Los
 Angeles County.
 
+## Getting the Data
+
 Census data is provided by the 2010 census for estimates of population and
 ethnic makeup, while we use ACS five-year estimates for median income and
 poverty level.
@@ -172,7 +174,8 @@ LA.plot +
   geom_polygon(aes(x = long, y = lat, group=group), data=circles,
                color='red', fill = 'red', linetype='dotted',
                alpha=0.2) + 
-  labs(title = "Radar Search Locations")
+  labs(title = "Radar Search Locations") + 
+  theme_bw()
 
 
 ```
@@ -359,15 +362,179 @@ getLocationCount <- function (row.iter) {
 #save(la.census, file='census_with_counts.RData')
 load('census_with_counts.RData')
 
-qplot(x = la.census$sb.count, title="Histogram of # of Starbuck's")
+qplot(x = la.census$sb.count, main="Histogram of # of Starbuck's") + 
+  theme_bw()
 ```
 
-TO DO:
+## Exploring the Data
 
-* Get Histogram of starbucks
-* Determine distribution of Starbucks
-* For each variable, do Monte Carlo simlulation to determine whether they are
-  correlated. Make each variable into a categorical variable.
+Looking at the population histogram again, there are several census tracts with
+very few, people that give outrageously high number of Starbuck's per 1000
+people. Thus, it may make sense to only look at census tracts with more than
+2000 people in them. (The Census Bureau usually aims to keep census tracts near
+4000 population.)
+```{r}
+la.census %<>% mutate(sb.per.1000 = sb.count * 1000 / population,
+                      sb.per.1000 = ifelse(sb.per.1000 == Inf, NA, sb.per.1000))
+
+hist(la.census$population)
+la.census %>% arrange(desc(sb.per.1000))
+# Filter out the low population tracts
+la.census %<>% mutate(sb.per.1000 = ifelse(population < 1000, NA, sb.per.1000))
+qplot(x = population, y = sb.per.1000, data = la.census)
+```
+
+Notice there still is a relationship here between population and Starbuck's per
+1000 people. 
+
+
+```{r, echo=FALSE}
+
+LA.map <- la.census %>%
+  select(Geo_FIPS, sb.count, sb.per.1000) %>%
+  right_join(LA.map, by=c('Geo_FIPS' = 'id'))
+
+
+ggplot() +
+  geom_polygon(data = LA.map,
+               aes(x=long, y=lat, group=group, fill=population)) + 
+  labs(title = "Population") + theme_bw() + coord_map()
+
+ggplot() + geom_polygon(data = LA.map,
+                        aes(x = long, y = lat, group = group,
+                            fill = rate.poverty)) + 
+  labs(title = "Poverty Rate") + theme_bw()+ coord_map()
+
+ggplot() + geom_polygon(data = LA.map,
+                        aes(x = long, y = lat, group = group,
+                            fill = white)) + 
+  labs(title = "% White") + theme_bw()+ coord_map()
+
+ggplot() + geom_polygon(data = LA.map,
+                        aes(x = long, y = lat, group = group,
+                            fill = sb.count)) + 
+  labs(title = "Starbuck's Count") + theme_bw()+ coord_map()
+
+ggplot() + geom_polygon(data = LA.map,
+                        aes(x = long, y = lat, group = group,
+                            fill = sb.per.1000)) + 
+  labs(title = "Starbuck's Per 1000 Population") + theme_bw()+ coord_map()
+```
+
+There is one census tract that has 25 Starbuck's near it, but none actaully in
+it. This is Griffith Park.
+
+
+
+
+
+## Fitting a Model
+Now we need to choose a model for this data. We could try a Poisson model, as
+our response variable is a count, but the variance of the data is greater than
+the mean, and thus our data is "overdispersed."
+```{r}
+mean(la.census$sb.count)
+var(la.census$sb.count)
+```
+
+To correct for this, we will model the data with a quasi-Poisson family. We are
+filtering out the tracts with low population, and then offsetting by population,
+so that it is taken into account in the model. 
+```{r}
+model <- la.census %>% filter(population > 1000) %>%
+  glm(sb.count ~ 1, data = ., offset=log(population), 
+      family=quasipoisson)
+summary(model)
+# The average number of Starbucks per 1000 people
+exp(model$coefficients)*1000
+
+qplot(x = model$residuals)
+```
+
+Now here is the question: Are the distributions of Starbuck's counts, taking
+into account population, statistcally different depending on the level of
+poverty? 
+
+```{r}
+la.census %<>% mutate(poverty.bool = rate.poverty > 40)
+
+modelA <- la.census %>% filter(population > 1000 & poverty.bool) %>%
+  glm(sb.count ~ 1, data = ., offset=log(population), 
+      family=quasipoisson)
+# The average number of Starbucks per 1000 people
+exp(modelA$coefficients)*1000
+
+
+modelB <- la.census %>% filter(population > 1000 & !poverty.bool) %>%
+  glm(sb.count ~ 1, data = ., offset=log(population), 
+      family=quasipoisson)
+# The average number of Starbucks per 1000 people
+exp(modelB$coefficients)*1000
+```
+
+If we split up the census tracts by whether their povery rate is greater than
+40%, we find that the intercept coefficient is fairly different, suggesting there
+are different rates in the two groups.
+
+We could try a doing a model with `glm` of `sb.count ~ rate.poverty`, but
+our Starbuck's location counts are __not independent__ at all; the number of
+Starbuck's near one census tract is highly correlated with the count for a
+neighboring census tract.
+
+Instead, we can use a permutation test. Let $\lambda_A$ be the intercept coefficient
+for the census tracts that have a poverty rate greater than 40% and $\lambda_B$ be
+the intercept coefficient for the rest of the census tracts.
+
+* $H_0: \lambda_A = \lambda_B$
+* $H_A: \lambda_A \neq \lambda_B$
+
+```{r}
+T_obs <- exp(modelA$coefficients)*1000 - exp(modelB$coefficients)*1000
+T_obs
+```
+
+
+
+```{r, echo=FALSE}
+count <- la.census %>% filter(poverty.bool) %>% count() %>% .$n
+iterations <- 1000
+  
+# Create a column of shuffle-able poverty bool values
+LA.shuffle <- la.census %>%
+  mutate(poverty = poverty.bool) %>%
+  filter(population > 1000) %>%
+  select(poverty.shuffle, population, sb.count)
+
+sampleT <- function (n) {
+  shuffle <- LA.poverty.shuffle %>% nrow() %>% sample()
+  LA.shuffle$poverty <- LA.shuffle$poverty[shuffle]
+  
+  modelSampleA <- LA.shuffle %>% filter(poverty) %>%
+    glm(sb.count ~ 1, data = ., offset=log(population), 
+        family=quasipoisson)
+  
+  modelSampleB <- LA.shuffle %>% filter(!poverty) %>%
+    glm(sb.count ~ 1, data = ., offset=log(population), 
+        family=quasipoisson)
+  # The average number of Starbucks per 1000 people
+  lambdaA <- exp(modelSampleA$coefficients)*1000
+  lambdaB <- exp(modelSampleB$coefficients)*1000
+  return(lambdaA - lambdaB)
+}
+
+Tvalues <- numeric(length=iterations)
+
+for (i in 1:iterations) {
+  Tvalues[i] <- sampleT(count)
+}
+
+qplot(x = Tvalues) + 
+  geom_vline(xintercept=T_obs, color = 'red') + 
+  theme_bw() + 
+  labs(title = "Null Distribution of Poverty - Non-Poverty")
+```
+
+
 
 
 
