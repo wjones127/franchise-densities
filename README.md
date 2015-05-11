@@ -12,10 +12,9 @@ confidence intervals were found similarly using bootstraping.
 
 ## Data
 ### Sources
-Census data was acquired from SocialExplorer.com.
-Shapefiles were acquired from ___
-Locations of Starbucks were found using the Google Places API using Radar
-Searches. The dataset of locations is cached in the folder `cached_data`.
+Census data were compiled and downloaded on [Social Explorer](http://www.socialexplorer.com)
+Shapefiles were acquired from the [County of Los Angeles' Open Data Portal](https://data.lacounty.gov/Geospatial/Census-Tracts-2010/ay2y-b9rg)
+Locations of Starbucks were found using the [Google's Places API](https://developers.google.com/places/webservice/) using Radar Searches. The dataset of locations is cached in the folder `cached_data`.
 
 ### Locations in Repo
 There are three directories in this repo that have data:

@@ -9,10 +9,15 @@ in an area with the rate of poverty in an area. For the locations, this project
 examines census tracts in Los Angeles County.
 
 ## Getting the Data
+Census data and shapefiles can be downloaded, but the location data for the
+Starbuck's location needs to be scraped from Google. 
+
+### Census Data
 
 Census data is provided by the 2010 census for estimates of population and
-ethnic makeup, while we use ACS five-year estimates for median income and
-poverty level.
+ethnic makeup, while we use American Community Survey five-year estimates for 
+median income and poverty level. The csv files were compiled and downloaded on
+[Social Explorer](http://www.socialexplorer.com).
 
 
 
@@ -20,24 +25,39 @@ Here are some histograms of the basic demographic data:
 
 ![](Analysis_files/figure-html/unnamed-chunk-3-1.png) 
 
+### Los Angeles County Shapefiles
+The shapefiles were acquired from the [County of Los Angeles' Open Data Portal](https://data.lacounty.gov/Geospatial/Census-Tracts-2010/ay2y-b9rg). 
 
 
 
-
-
+### Scrapping the Location Data
 
 Now that we have a selection of census tracts to examine, we need to find how
 many Starbucks locations are nearby each. To get all the relevant locations in
 the area, we can do a series of searches on Google around specially chosen
-points. We can do this with 24 radar searches with radii of 13 kilometers. The
-maximum radius is 50km, but this increases the likelihood that we will miss
-locations, for the API call only returns up to 200 locations at once.(The
-function here to draw circles was adapted from code written by
-Gregoire Vincke, in a 
+points. 
+
+[Google's Places API](https://developers.google.com/places/webservice/) allows
+developers to send HTTP request for "Radar Searches," which take a lat/long
+location, a radius and search query and returns up to 200 locations in the
+given radius that match the query. 
+
+Thus, if we can cover all of LA County with a series of Radar Searches, we can
+find all the locations of all Starbuck's in the area. It turns out we can
+accomplish this with just 24 radar searches, each with radii of 13 kilometers.
+(The maximum radius is 50km, but this increases the likelihood that we will miss
+locations, for the API call only returns up to 200 locations at once.)
+
+Below is a plot showing the arrangement of all the radar searches. (The function
+used here to draw circles was adapted from code written by Gregoire Vincke, in a 
 [Stack Overflow answer](http://stackoverflow.com/a/29133886/4645559).)
 ![](Analysis_files/figure-html/unnamed-chunk-5-1.png) 
 
-
+The locations have been saved as a file and are just loaded from that file in
+this document. For those who are interested, though, the code used to scrape the
+location data is present in the RMD file, with the portions that actually
+execute the search commented out. (In order to make use of the code though, you
+will need to get your own API key from Google.)
 
 ![](Analysis_files/figure-html/unnamed-chunk-6-1.png) 
 
@@ -46,53 +66,57 @@ Forest, and the western stretch is Santa Monica Mountains Recreational Area. In
 some areas, that are likely less populated, the locations seem to align with
 whatever freeways are nearby.
 
-Now we need to calculate how many Starbuck's locations are near each census
-tract.
+From these locations we can calculate the number of Starbuck's nearby for each
+census tract. We will consider a Starbuck's location nearby if it is within
+2 kilometers of the border of the census tract.
+
+The results of this data manipulation are also saved as an R data dump, because
+of how long they took to calculate. Once again, the code to make the
+calculations can be found in the RMD file, with the lines that execute the
+calculate commented out. (Please take a moment of silence to mourn the many
+hours I lost to figuring out how to draw a circle on a spherical Earth and 
+then detect whether that circle intersected with a polygon that also exists on a
+spherical Earth.)
 
 ![](Analysis_files/figure-html/unnamed-chunk-7-1.png) 
+
+
 
 ## Exploring the Data
 
 Looking at the population histogram again, there are several census tracts with
 very few, people that give outrageously high number of Starbuck's per 1000
-people. Thus, it may make sense to only look at census tracts with more than
-2000 people in them. (The Census Bureau usually aims to keep census tracts near
-4000 population.)
+people. If we look at the map with population and the locations, it becomes
+clear why. Census tracts that are mainly parks have very small populations, but
+are so large that they border a lot of census tracts that are populated, and
+thus pick up the Starbuck's locations from those. Thus, it may make sense to
+only look at census tracts with more than 2000 people in them. (The Census 
+Bureau usually aims to keep census tracts near 4000 population.)
 ![](Analysis_files/figure-html/unnamed-chunk-8-1.png) 
 
 ```
-## Source: local data frame [2,203 x 8]
+## Source: local data frame [2,203 x 3]
 ## 
-##       Geo_FIPS population     white median.income pop.poverty rate.poverty
-## 1  06037980018          1 100.00000            NA           0            0
-## 2  06037980028          4  25.00000            NA           0            0
-## 3  06037980009         14  92.85714        117905           0            0
-## 4  06037980022          4  75.00000            NA           0            0
-## 5  06037980023          8  50.00000            NA           0            0
-## 6  06037980013         59  91.52542            NA           0            0
-## 7  06037504102         22  45.45455            NA           0            0
-## 8  06037980026         20  85.00000         82212           0            0
-## 9  06037980033         61  63.93443            NA           0            0
-## 10 06037551600         31  22.58065            NA           0            0
-## ..         ...        ...       ...           ...         ...          ...
-## Variables not shown: sb.count (int), sb.per.1000 (dbl)
+##    population sb.count sb.per.1000
+## 1           1        9  9000.00000
+## 2           4       10  2500.00000
+## 3          14       24  1714.28571
+## 4           4        3   750.00000
+## 5           8        3   375.00000
+## 6          59       13   220.33898
+## 7          22        4   181.81818
+## 8          20        3   150.00000
+## 9          61        6    98.36066
+## 10         31        2    64.51613
+## ..        ...      ...         ...
 ```
 
-```
-## Warning in loop_apply(n, do.ply): Removed 38 rows containing missing values
-## (geom_point).
-```
-
-![](Analysis_files/figure-html/unnamed-chunk-8-2.png) 
-
-Notice there still is a relationship here between population and Starbuck's per
-1000 people. 
 
 
-![](Analysis_files/figure-html/unnamed-chunk-9-1.png) ![](Analysis_files/figure-html/unnamed-chunk-9-2.png) ![](Analysis_files/figure-html/unnamed-chunk-9-3.png) ![](Analysis_files/figure-html/unnamed-chunk-9-4.png) ![](Analysis_files/figure-html/unnamed-chunk-9-5.png) 
 
-There is one census tract that has 25 Starbuck's near it, but none actaully in
-it. This is Griffith Park.
+![](Analysis_files/figure-html/unnamed-chunk-9-1.png) ![](Analysis_files/figure-html/unnamed-chunk-9-2.png) ![](Analysis_files/figure-html/unnamed-chunk-9-3.png) 
+
+
 
 
 
@@ -104,19 +128,11 @@ our response variable is a count, but the variance of the data is greater than
 the mean, and thus our data is "overdispersed."
 
 ```r
-mean(la.census$sb.count)
+c(mean(la.census$sb.count), var(la.census$sb.count))
 ```
 
 ```
-## [1] 4.375851
-```
-
-```r
-var(la.census$sb.count)
-```
-
-```
-## [1] 12.94768
+## [1]  4.375851 12.947682
 ```
 
 To correct for this, we will model the data with a quasi-Poisson family. We are
@@ -127,35 +143,6 @@ so that it is taken into account in the model.
 model <- la.census %>% filter(population > 1000) %>%
   glm(sb.count ~ 1, data = ., offset=log(population), 
       family=quasipoisson)
-summary(model)
-```
-
-```
-## 
-## Call:
-## glm(formula = sb.count ~ 1, family = quasipoisson, data = ., 
-##     offset = log(population))
-## 
-## Deviance Residuals: 
-##     Min       1Q   Median       3Q      Max  
-## -3.8501  -1.3870  -0.3786   0.8366   8.3151  
-## 
-## Coefficients:
-##             Estimate Std. Error t value Pr(>|t|)    
-## (Intercept) -6.88017    0.02094  -328.5   <2e-16 ***
-## ---
-## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-## 
-## (Dispersion parameter for quasipoisson family taken to be 4.142135)
-## 
-##     Null deviance: 7058.2  on 2164  degrees of freedom
-## Residual deviance: 7058.2  on 2164  degrees of freedom
-## AIC: NA
-## 
-## Number of Fisher Scoring iterations: 5
-```
-
-```r
 # The average number of Starbucks per 1000 people
 exp(model$coefficients)*1000
 ```
@@ -164,12 +151,6 @@ exp(model$coefficients)*1000
 ## (Intercept) 
 ##    1.027974
 ```
-
-```r
-qplot(x = model$residuals)
-```
-
-![](Analysis_files/figure-html/unnamed-chunk-11-1.png) 
 
 ### Starbuck's Counts and Poverty
 
@@ -215,13 +196,24 @@ our Starbuck's location counts are __not independent__ at all; the number of
 Starbuck's near one census tract is highly correlated with the count for a
 neighboring census tract.
 
-Instead, we can use a permutation test. Let $\lambda_A$ be the intercept coefficient
-for the census tracts that have a poverty rate greater than 40% and $\lambda_B$ be
-the intercept coefficient for the rest of the census tracts.
+Essentially our effective sample size is a smaller than the number of census
+tracts we observed, because the high correlation means that any given census
+tract provides little additional information. 
+
+Instead, we can use a [permutation test](http://en.wikipedia.org/wiki/Resampling_(statistics)#Permutation_tests), which does not make any assumptions
+about the distribution the data comes from and will preserve the spatial
+relationships between census tracts.
+
+For the quasipoisson model we computed for this data, given the intercept term
+$I$, let the average number of Starbuck's locations per 1,000 people is
+$\lambda = 1000 \cdot exp(I).$ Let $\lambda_A$ be the $\lambda$ value for the
+census tracts that have a poverty rate greater than 40% and $\lambda_B$ be the
+value for the rest of the census tracts. Then our hypotheses will be:
 
 * $H_0: \lambda_A - \lambda_B = 0$
 * $H_A: \lambda_A - \lambda_B \neq 0$
 
+Our test statistical that we observed from our sample is:
 
 ```r
 T_obs <- exp(modelA$coefficients)*1000 - exp(modelB$coefficients)*1000
@@ -233,64 +225,58 @@ T_obs
 ##   0.2624036
 ```
 
+A permutation test involves calculating the test statistic for every 
+permutation of the `poverty` variable, to find the null permutation
+distribution. This is because the null hypothesis assumes that the `poverty`
+variable carries no information about the response variable, and thus should
+have no effect on the test statistic. But, we have 2,255 observations, and thus,
+would have to calculate test statistics for $2,254!$ permutations! (Try typing
+`factorial(2254)` into R, and it will just return `Inf`. That's how big that is.)
+So instead of calculating every permutation, we will use Monte Carlo sampling 
+to sample a more manageable number of permutations and use the sampling
+distribution as an approximation of the full null permutation distribution. 
 
 
 ![](Analysis_files/figure-html/unnamed-chunk-14-1.png) 
-The probability of getting a value of $T$ greater than our $T_{obs}$ from the
-null distribution is 
+The probability of getting a value of $T$ as likely or less likely than our 
+$T_{obs}$ from the null permutation distribution is 
 
 ```r
-(sum(Tvalues >= T_obs) + 1)/(iterations+1)
+2 * (sum(Tvalues >= T_obs) + 1)/(iterations+1)
 ```
 
 ```
-## [1] 0.008991009
+## [1] 0.01679664
 ```
 
-Thus, it is safe to say that there is a statistically significant difference
-between the distribution of Starbuck's counts in poorer and wealthier areas.
+Thus, we can say with a confidence of 98% there is a statistically significant
+difference between the distribution of Starbuck's counts in poorer and wealthier
+areas.
 
-We can construct confidence intervals for these values using a similar method
-called Bootstrapping.
+We can construct confidence intervals for these values using Bootstrapping, a
+method that in similar in principle to what we just did. Bootstrapping
+estimates the distribution of a statistic about a set of data by calculating
+that statistic on a large number of samples from the data set, each of which
+are the same size as the original data but sampled with replacement. From this
+approximated distribution, we can then get the 95% confidence intervals by
+finding the quantiles for 0.025 and 0.975.
+
+
 
 
 ```r
-bootstrap.CI <- function(iterations) {
-  # Place to store the bootstrapped samples
-  boot.sample.T <- numeric(length = iterations)
-  boot.sample.F <- numeric(length = iterations)
-  # New subsetted data to sample from
-  data.T <- la.census %>% filter(poverty & population > 1000)
-  data.F <- la.census %>% filter(!poverty & population > 1000)
-  # Perform first bootstrap
-  for (i in 1:iterations) {
-    boot.sample.T[i] <- data.T %>% 
-      sample_n(nrow(data.T), replace=TRUE) %>% 
-      calcCoef()
-  }
-  # Perform second bootstrap
-  for (i in 1:iterations) {
-    boot.sample.F[i] <- data.F %>% 
-      sample_n(nrow(data.F), replace=TRUE) %>%
-      calcCoef()
-  }
-  alpha <- 0.05
-  CI <- c(alpha/2, 1 - alpha/2)
-  list(quantile(boot.sample.T, CI),
-       quantile(boot.sample.F, CI)) %>% return()
-}
-
-confidence.intervals <- bootstrap.CI(1000)
+bootstrap.CI(5000)
 ```
 
-
-### Other Variables
-We could do similar analyses with variables like median income and percentage of
-population that is white. Both of these are strongly correlated with poverty
-level in the Los Angeles area, as can be seen below.
-![](Analysis_files/figure-html/unnamed-chunk-17-1.png) ![](Analysis_files/figure-html/unnamed-chunk-17-2.png) ![](Analysis_files/figure-html/unnamed-chunk-17-3.png) 
-Thus, analyses of these will likely not provide much more information.
-
+```
+## [[1]]
+##      2.5%     97.5% 
+## 0.9735039 1.6151930 
+## 
+## [[2]]
+##      2.5%     97.5% 
+## 0.9805523 1.0574163
+```
 
 
 
