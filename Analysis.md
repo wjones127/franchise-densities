@@ -8,6 +8,25 @@ This project examines correlations between the number of Starbuck's locations
 in an area with the rate of poverty in an area. For the locations, this project
 examines census tracts in Los Angeles County.
 
+More generally, this project explored scraping locations from Google's Places
+API to determine the number of locations near census tracts. This project also
+discusses analyizing this type of data, which has really strong spatial
+correlation between data points. In analyizing the data, I used a permuatation
+test with Monte Carlo sampling and bootstrapping to test the significance of
+differences in rates of Starbuck's per 1,000 population in low and high poverty
+areas and get confidence intervals for the average rates.
+
+I found that census tracts in which there is higher levels of poverty (more than
+40% of the population below the poverty line), there are more Starbuck's
+locations per 1,000 people. In low-poverty tracts, the rate was 1.02 
+(95% CI [0.98, 1.05]), whereas for high-poverty tracts, the rate was 1.28
+(95% CI [0.97, 1.62]).
+
+This anaylsis could easily be adapted to other scenarios (that are probably more
+interesting, to be honest.) For example, how are medical marijuana clinics or
+payday loan businesses correlated with povery in surrounding areas? How does
+this vary between different cities? 
+
 ## Getting the Data
 Census data and shapefiles can be downloaded, but the location data for the
 Starbuck's location needs to be scraped from Google. 
@@ -51,6 +70,7 @@ locations, for the API call only returns up to 200 locations at once.)
 Below is a plot showing the arrangement of all the radar searches. (The function
 used here to draw circles was adapted from code written by Gregoire Vincke, in a 
 [Stack Overflow answer](http://stackoverflow.com/a/29133886/4645559).)
+
 ![](Analysis_files/figure-html/unnamed-chunk-5-1.png) 
 
 The locations have been saved as a file and are just loaded from that file in
@@ -92,6 +112,7 @@ are so large that they border a lot of census tracts that are populated, and
 thus pick up the Starbuck's locations from those. Thus, it may make sense to
 only look at census tracts with more than 2000 people in them. (The Census 
 Bureau usually aims to keep census tracts near 4000 population.)
+
 ![](Analysis_files/figure-html/unnamed-chunk-8-1.png) 
 
 ```
@@ -127,6 +148,7 @@ Now we need to choose a model for this data. We could try a Poisson model, as
 our response variable is a count, but the variance of the data is greater than
 the mean, and thus our data is "overdispersed."
 
+
 ```r
 c(mean(la.census$sb.count), var(la.census$sb.count))
 ```
@@ -138,6 +160,7 @@ c(mean(la.census$sb.count), var(la.census$sb.count))
 To correct for this, we will model the data with a quasi-Poisson family. We are
 filtering out the tracts with low population, and then offsetting by population,
 so that it is taken into account in the model. 
+
 
 ```r
 model <- la.census %>% filter(population > 1000) %>%
@@ -215,6 +238,7 @@ value for the rest of the census tracts. Then our hypotheses will be:
 
 Our test statistical that we observed from our sample is:
 
+
 ```r
 T_obs <- exp(modelA$coefficients)*1000 - exp(modelB$coefficients)*1000
 T_obs
@@ -238,15 +262,17 @@ distribution as an approximation of the full null permutation distribution.
 
 
 ![](Analysis_files/figure-html/unnamed-chunk-14-1.png) 
+
 The probability of getting a value of $T$ as likely or less likely than our 
 $T_{obs}$ from the null permutation distribution is 
+
 
 ```r
 2 * (sum(Tvalues >= T_obs) + 1)/(iterations+1)
 ```
 
 ```
-## [1] 0.01679664
+## [1] 0.01519696
 ```
 
 Thus, we can say with a confidence of 98% there is a statistically significant
@@ -271,14 +297,27 @@ bootstrap.CI(5000)
 ```
 ## [[1]]
 ##      2.5%     97.5% 
-## 0.9735039 1.6151930 
+## 0.9751724 1.6032186 
 ## 
 ## [[2]]
 ##      2.5%     97.5% 
-## 0.9805523 1.0574163
+## 0.9813473 1.0572831
 ```
 
+## Conclusions
+I found that there the rate of Starbuck's per 1,000 people in high-poverty
+census tracts is higher than the low-poverty rate in Los Angeles County. In
+some ways, I find this counter-intuitive; why would Starbuck's locations be
+more numerous where more of the population in the area probably cannot afford
+to buy a $4.00 lattés all the time?
 
+Either my intuition is wrong, or there is something missing from my model. One
+thing I did not account for is the population densities of census tracts. It is
+possible that Starbuck's are simply spread out geographically such that areas
+with more people will naturally have more Starbuck's per 1,000 people.
+
+It's important to note that these results are not generalizable outside of
+Los Angeles County; all the data examined was limited to that area.
 
 
 
