@@ -59,19 +59,7 @@ very few, people that give outrageously high number of Starbuck's per 1000
 people. Thus, it may make sense to only look at census tracts with more than
 2000 people in them. (The Census Bureau usually aims to keep census tracts near
 4000 population.)
-
-```r
-la.census %<>% mutate(sb.per.1000 = sb.count * 1000 / population,
-                      sb.per.1000 = ifelse(sb.per.1000 == Inf, NA, sb.per.1000))
-
-hist(la.census$population)
-```
-
 ![](Analysis_files/figure-html/unnamed-chunk-8-1.png) 
-
-```r
-la.census %>% arrange(desc(sb.per.1000))
-```
 
 ```
 ## Source: local data frame [2,203 x 8]
@@ -89,12 +77,6 @@ la.census %>% arrange(desc(sb.per.1000))
 ## 10 06037551600         31  22.58065            NA           0            0
 ## ..         ...        ...       ...           ...         ...          ...
 ## Variables not shown: sb.count (int), sb.per.1000 (dbl)
-```
-
-```r
-# Filter out the low population tracts
-la.census %<>% mutate(sb.per.1000 = ifelse(population < 1000, NA, sb.per.1000))
-qplot(x = population, y = sb.per.1000, data = la.census)
 ```
 
 ```
@@ -190,38 +172,39 @@ qplot(x = model$residuals)
 
 ![](Analysis_files/figure-html/unnamed-chunk-11-1.png) 
 
+### Starbuck's Counts and Poverty
+
 Now here is the question: Are the distributions of Starbuck's counts, taking
 into account population, statistcally different depending on the level of
 poverty? 
 
 
 ```r
-la.census %<>% mutate(poverty.bool = rate.poverty > 30)
+la.census %<>% mutate(poverty.bool = rate.poverty > 40)
 
-model <- la.census %>% filter(population > 1000 & poverty.bool) %>%
+modelA <- la.census %>% filter(population > 1000 & poverty.bool) %>%
   glm(sb.count ~ 1, data = ., offset=log(population), 
       family=quasipoisson)
 # The average number of Starbucks per 1000 people
-obs.value <- exp(model$coefficients)*1000
-obs.value
+exp(modelA$coefficients)*1000
 ```
 
 ```
 ## (Intercept) 
-##    1.032495
+##    1.280697
 ```
 
 ```r
-model <- la.census %>% filter(population > 1000 & !poverty.bool) %>%
+modelB <- la.census %>% filter(population > 1000 & !poverty.bool) %>%
   glm(sb.count ~ 1, data = ., offset=log(population), 
       family=quasipoisson)
 # The average number of Starbucks per 1000 people
-exp(model$coefficients)*1000
+exp(modelB$coefficients)*1000
 ```
 
 ```
 ## (Intercept) 
-##    1.027371
+##    1.018293
 ```
 
 If we split up the census tracts by whether their povery rate is greater than
@@ -233,25 +216,67 @@ our Starbuck's location counts are __not independent__ at all; the number of
 Starbuck's near one census tract is highly correlated with the count for a
 neighboring census tract.
 
-Instead, we can use a permutation test. Let $T_P$ be the intercept coefficient
-for the census tracts that have a poverty rate greater than 40% and $T_S$ be
-the intercept coefficient for a random sample of census tracts (of the same
-size.)
+Instead, we can use a permutation test. Let $\lambda_A$ be the intercept coefficient
+for the census tracts that have a poverty rate greater than 40% and $\lambda_B$ be
+the intercept coefficient for the rest of the census tracts.
 
-* $H_0: T_P = T_S$
-* $H_A: T_P \neq T_S$
-
+* $H_0: \lambda_A - \lambda_B = 0$
+* $H_A: \lambda_A \lambda_B \neq 0$
 
 
-![](Analysis_files/figure-html/unnamed-chunk-13-1.png) 
+```r
+T_obs <- exp(modelA$coefficients)*1000 - exp(modelB$coefficients)*1000
+T_obs
+```
+
+```
+## (Intercept) 
+##   0.2624036
+```
 
 
 
-TO DO:
+![](Analysis_files/figure-html/unnamed-chunk-14-1.png) 
+The probability of getting a value of $T$ greater than our $T_{obs}$ from the
+null distribution is 
 
-* Determine distribution of Starbucks
-* For each variable, do Monte Carlo simlulation to determine whether they are
-  correlated. Make each variable into a categorical variable.
+```r
+(sum(Tvalues >= T_obs) + 1)/(iterations+1)
+```
+
+```
+## [1] 0.008991009
+```
+
+Thus, it is safe to say that there is a statistically significant difference
+between the distribution of Starbuck's counts in poorer and wealthier areas.
+
+### Starbuck's Count and Race
+
+Another demographic element that may also factor into how many Starbuck's are 
+near an area is the racial makeup of the area. One specific way to look at this
+is the percentage of the population that is white.
+
+We should not, though, that in the Los Angeles area the percentage of people who
+are white is correlated with poverty, which we have already shown to be
+correlated with the number of Starbuck's in an area.
 
 
+```r
+qplot(x = rate.poverty, y = white, data = la.census) +
+  labs(x = "% of Population in Poverty", 
+       y = "% of Population is White")
+```
+
+![](Analysis_files/figure-html/unnamed-chunk-16-1.png) 
+
+```r
+cor(la.census$rate.poverty, la.census$white, use='pairwise.complete.obs')
+```
+
+```
+## [1] -0.4427941
+```
+
+We can do a similar model as we did with poverty.
 

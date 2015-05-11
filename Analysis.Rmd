@@ -5,6 +5,7 @@ date: "April 1, 2015"
 output:
   html_document:
     keep_md: yes
+    toc: yes
 ---
 
 ```{r, echo=FALSE, warning=FALSE}
@@ -175,7 +176,7 @@ LA.plot +
                color='red', fill = 'red', linetype='dotted',
                alpha=0.2) + 
   labs(title = "Radar Search Locations") + 
-  theme_bw()
+  theme_bw() + coord_map()
 
 
 ```
@@ -373,15 +374,17 @@ very few, people that give outrageously high number of Starbuck's per 1000
 people. Thus, it may make sense to only look at census tracts with more than
 2000 people in them. (The Census Bureau usually aims to keep census tracts near
 4000 population.)
-```{r}
+```{r, echo=FALSE}
 la.census %<>% mutate(sb.per.1000 = sb.count * 1000 / population,
                       sb.per.1000 = ifelse(sb.per.1000 == Inf, NA, sb.per.1000))
 
-hist(la.census$population)
+qplot(x = population, data = la.census) + theme_bw()
 la.census %>% arrange(desc(sb.per.1000))
 # Filter out the low population tracts
 la.census %<>% mutate(sb.per.1000 = ifelse(population < 1000, NA, sb.per.1000))
-qplot(x = population, y = sb.per.1000, data = la.census)
+qplot(x = population, y = sb.per.1000, data = la.census) + theme_bw() + 
+  labs(title = "Population and SB Rate After Chucking Small Pops",
+       x = "Population", y = "Starbuck's Count per 1000")
 ```
 
 Notice there still is a relationship here between population and Starbuck's per
@@ -451,6 +454,8 @@ exp(model$coefficients)*1000
 qplot(x = model$residuals)
 ```
 
+### Starbuck's Counts and Poverty
+
 Now here is the question: Are the distributions of Starbuck's counts, taking
 into account population, statistcally different depending on the level of
 poverty? 
@@ -485,8 +490,8 @@ Instead, we can use a permutation test. Let $\lambda_A$ be the intercept coeffic
 for the census tracts that have a poverty rate greater than 40% and $\lambda_B$ be
 the intercept coefficient for the rest of the census tracts.
 
-* $H_0: \lambda_A = \lambda_B$
-* $H_A: \lambda_A \neq \lambda_B$
+* $H_0: \lambda_A - \lambda_B = 0$
+* $H_A: \lambda_A - \lambda_B \neq 0$
 
 ```{r}
 T_obs <- exp(modelA$coefficients)*1000 - exp(modelB$coefficients)*1000
@@ -503,10 +508,10 @@ iterations <- 1000
 LA.shuffle <- la.census %>%
   mutate(poverty = poverty.bool) %>%
   filter(population > 1000) %>%
-  select(poverty.shuffle, population, sb.count)
+  select(poverty, population, sb.count)
 
 sampleT <- function (n) {
-  shuffle <- LA.poverty.shuffle %>% nrow() %>% sample()
+  shuffle <- LA.shuffle %>% nrow() %>% sample()
   LA.shuffle$poverty <- LA.shuffle$poverty[shuffle]
   
   modelSampleA <- LA.shuffle %>% filter(poverty) %>%
@@ -532,9 +537,33 @@ qplot(x = Tvalues) +
   geom_vline(xintercept=T_obs, color = 'red') + 
   theme_bw() + 
   labs(title = "Null Distribution of Poverty - Non-Poverty")
+
+```
+The probability of getting a value of $T$ greater than our $T_{obs}$ from the
+null distribution is 
+```{r}
+(sum(Tvalues >= T_obs) + 1)/(iterations+1)
 ```
 
+Thus, it is safe to say that there is a statistically significant difference
+between the distribution of Starbuck's counts in poorer and wealthier areas.
 
+### Starbuck's Count and Race
 
+Another demographic element that may also factor into how many Starbuck's are 
+near an area is the racial makeup of the area. One specific way to look at this
+is the percentage of the population that is white.
 
+We should not, though, that in the Los Angeles area the percentage of people who
+are white is correlated with poverty, which we have already shown to be
+correlated with the number of Starbuck's in an area.
+
+```{r, warning=FALSE}
+qplot(x = rate.poverty, y = white, data = la.census) +
+  labs(x = "% of Population in Poverty", 
+       y = "% of Population is White")
+cor(la.census$rate.poverty, la.census$white, use='pairwise.complete.obs')
+```
+
+We can do a similar model as we did with poverty.
 
