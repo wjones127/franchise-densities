@@ -272,7 +272,7 @@ $T_{obs}$ from the null permutation distribution is
 ```
 
 ```
-## [1] 0.01519696
+## [1] 0.01439712
 ```
 
 Thus, we can say with a confidence of 98% there is a statistically significant
@@ -297,11 +297,11 @@ bootstrap.CI(5000)
 ```
 ## [[1]]
 ##      2.5%     97.5% 
-## 0.9751724 1.6032186 
+## 0.9737381 1.6209883 
 ## 
 ## [[2]]
 ##      2.5%     97.5% 
-## 0.9813473 1.0572831
+## 0.9817626 1.0578419
 ```
 
 ## Conclusions

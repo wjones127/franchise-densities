@@ -152,7 +152,7 @@ Below is a plot showing the arrangement of all the radar searches. (The function
 used here to draw circles was adapted from code written by Gregoire Vincke, in a 
 [Stack Overflow answer](http://stackoverflow.com/a/29133886/4645559).)
 
-```{r, echo=FALSE, fig.width=4}
+```{r, echo=FALSE}
 makeCircle <- function(LonDec, LatDec, Km, group) {#Corrected function
     #LatDec = latitude in decimal degrees of the center of the circle
     #LonDec = longitude in decimal degrees
@@ -413,7 +413,7 @@ thus pick up the Starbuck's locations from those. Thus, it may make sense to
 only look at census tracts with more than 2000 people in them. (The Census 
 Bureau usually aims to keep census tracts near 4000 population.)
 
-```{r, echo=FALSE, fig.width=4}
+```{r, echo=FALSE}
 ggplot() +
   geom_polygon(data = LA.map,
                aes(x=long, y=lat, group=group, fill=population)) +
@@ -436,7 +436,7 @@ la.census %<>% mutate(sb.per.1000 = ifelse(population < 1000, NA, sb.per.1000))
 
 
 
-```{r, echo=FALSE, fig.width=4}
+```{r, echo=FALSE}
 
 LA.map <- la.census %>%
   select(Geo_FIPS, sb.count, sb.per.1000) %>%
