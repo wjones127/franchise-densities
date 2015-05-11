@@ -548,7 +548,7 @@ between the distribution of Starbuck's counts in poorer and wealthier areas.
 We can construct confidence intervals for these values using a similar method
 called Bootstrapping.
 
-```{r}
+```{r, echo=FALSE}
 bootstrap.CI <- function(iterations) {
   # Place to store the bootstrapped samples
   boot.sample.T <- numeric(length = iterations)
@@ -573,8 +573,10 @@ bootstrap.CI <- function(iterations) {
   list(quantile(boot.sample.T, CI),
        quantile(boot.sample.F, CI)) %>% return()
 }
+```
 
-confidence.intervals <- bootstrap.CI(1000)
+```{r, warning=FALSE}
+bootstrap.CI(1000)
 ```
 
 
