@@ -10,12 +10,12 @@ output: ioslides_presentation
 
 ## What I Looked At
 
-### Specific
+### Research Question
 
-- Where are Starbuck's in Los Angeles County?
-- Are their locations correlated with poverty?
+Are the __number of Starbuck's locations__ near census tracts in Los Angeles
+County correlated with the __rate of poverty__?
 
-### General
+### Technical Questions
 
 - How to scrape location data from Google Places API?
 - How to calculate notion of number of Starbuck in an area?
@@ -36,34 +36,87 @@ Variables:
 - % of Population Below Poverty Line
 - \# of Starbuck's Nearby
 
+# Getting the Location Data
+
 ## Google Places API
 Limitations for Radar Search
 
-- Only 1000 requests per day
-- Returns up to 200 locations at once
 - Maximum radius of 50 kilometers
+- Returns up to 200 locations at once
+- Only 1000 requests per day
 
 ## The Grid
 
 ![Radar Search Locations](images/radar_search.png)
+
+## Location Map
+
+![Locations of Starbuck's in LA County](images/locations_population.png)
 
 ## Counting the Locations
 
 Wanted to caputure notion of how many Starbuck's were accessible to communities
 that live in particular census tracts.
 
-Chosen criteria:
+Chosen criteria to count a location:
 
 - Location within borders of census tract, __or__
 - location within 2 kilometers of a border
 
-## Location Map
+# Modeling the Data
 
-![Locations of Starbuck's in LA County](images/locations_population.png)
+## How to Analyze
 
-## Counts
+- There is a lot of spatial correlation, so the effective sample size is low.
+- Thus, confidence intervals we calculate will be __more precise__ than they
+  should be
 
 
+## Modeling the data
+The data for the SB counts was overdispersed, so I used a Quasi-Poisson Model.
+
+```
+model <- la.census %>% filter(population > 1000) %>%
+  glm(sb.count ~ 1, data = ., offset=log(population / area.land), 
+      family=quasipoisson)
+```
+
+## Our Statistic
+
+Let $\lambda$ be the intercept coefficient from our model. Then,
+$$T = 1,000 \cdot \exp(\lambda)$$
+will be the
+$$\frac{\text{Avg. Num. of Starbuck's}}{\text{1,000 Population} /
+\text{square mile}}.$$
 
 
+## Permutation Test
+Determines whether there is a difference in a statistic between two groups in
+the data.
+$$H_0: T_A - T_B = 0, H_A = T_A - T_B \neq 0$$
 
+1. Record $T_A - T_B$ from the actual groups $A$ and $B$
+2. Compute null permutation distribution using Monte Carlo simulation
+  - Randomly shuffle observations into groups $A$ and $B$
+  - Compute statistic
+  - Repeat 5,000 times
+3. Evaluate probability that observed statistic came from null distribution
+
+
+## Bootstrapping
+Estimates the distribution of statistic based on resampling data.
+
+Confidence intervals for $T_A$ and $T_B$ were computed from this.
+
+
+## Results from Analysis
+
+Poverty     Estimated Starbuck's / 1,000 Pop      95% CI               n
+--------    ---------------------------------     --------------       ------
+High        0.18                                  [0.14, .23]          91
+Low         0.32                                  [0.31, 0.34]         2,103
+
+Poverty classified as high if rate over 40%.
+
+__Note__: Confidence intervals are smaller here than they should be, given lower
+effective sample size.
