@@ -272,7 +272,7 @@ $T_{obs}$ from the null permutation distribution is
 ```
 
 ```
-## [1] 0.01439712
+## [1] 0.01879624
 ```
 
 Thus, we can say with a confidence of 98% there is a statistically significant
@@ -297,11 +297,11 @@ bootstrap.CI(5000)
 ```
 ## [[1]]
 ##      2.5%     97.5% 
-## 0.9737381 1.6209883 
+## 0.9862144 1.6166196 
 ## 
 ## [[2]]
 ##      2.5%     97.5% 
-## 0.9817626 1.0578419
+## 0.9805457 1.0574135
 ```
 
 ## Conclusions
@@ -320,5 +320,98 @@ It's important to note that these results are not generalizable outside of
 Los Angeles County; all the data examined was limited to that area.
 
 
+## Analysis Round 2
+This is after the due date, but I wanted to follow up on the land area issue.
+
+I mentioned in my previous conclusions from my first analysis that the model I
+used may not be accurate because I failed to account for the difference in size
+between census tracts.
+
+![](Analysis_files/figure-html/unnamed-chunk-18-1.png) 
+
+There clearly is a relationship between the rate of poverty and population
+density. Furthermore, the average population density for what we labelled as
+higher poverty areas is clearly higher than that of low poverty areas. So the
+assumptions I made in speculating that a model that took into account land
+area are true.
+
+Given their rates of Starbuck's per 1,000 people are equal, we should expect
+that their rates of Starbuck's per 1,000 people per square mile should be
+greater for the census tract with less area. 
+
+Below I have created a model that takes into account the amount of land area
+(so excluding parts that are water) in a census tract. From it we can compute a
+new statistic, the average number of Starbuck's per 1,000 population per square
+mile. 
 
 
+```r
+modelA <- la.census %>% filter(population > 1000 & poverty) %>%
+  glm(sb.count ~ 1, data = ., offset=log(population / area.land), 
+      family=quasipoisson)
+# The average number of Starbucks per 1000 people per sq. mile
+exp(modelA$coefficients)*1000
+```
+
+```
+## (Intercept) 
+##   0.1819664
+```
+
+```r
+modelB <- la.census %>% filter(population > 1000 & !poverty) %>%
+  glm(sb.count ~ 1, data = ., offset=log(population / area.land), 
+      family=quasipoisson)
+# The average number of Starbucks per 1000 people per sq. mile
+exp(modelB$coefficients)*1000
+```
+
+```
+## (Intercept) 
+##   0.3246997
+```
+
+Here, we get what seems to be a clearly lower rate for high poverty census
+tracts, which aligns with my earlier intuition that the rate should be lower
+for census tracts with greater poverty levels.
+
+As before, we can use a permutation test to determine if these two values have
+a difference that is statistically significant.
+
+![](Analysis_files/figure-html/unnamed-chunk-20-1.png) 
+
+The probability of getting a value of $T$ as likely or less likely than our 
+$T_{obs}$ from the null permutation distribution is 
+
+
+```r
+2 * (sum(Tvalues <= T_obs) + 1)/(iterations+1)
+```
+
+```
+## [1] 0.00039992
+```
+
+Thus, we can say with 99.96% confidence that the two rates are different.
+
+Again, we can find confidence intervals for these rates using bootstrapping.
+
+
+```r
+bootstrap.CI(5000)
+```
+
+```
+## [[1]]
+##      2.5%     97.5% 
+## 0.1420536 0.2254875 
+## 
+## [[2]]
+##      2.5%     97.5% 
+## 0.3101007 0.3400189
+```
+
+Thus, with our analyis taking into account for finds that the average number
+of Starbuck's per 1,000 population per square mile in census tracts with high
+poverty is 0.18 (95% CI [0.14, 0.23]) and in census tracts with low poverty
+is 0.32 (95% CI [0.31, 0.34]).

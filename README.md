@@ -1,10 +1,9 @@
 # Where are the Starbuck's at?
-There are more Starbuck's locations near census tracts with high poverty rates
-than those with low rates, according to analysis in this project. There are
-about 1.28 (95% CI [0.99,1.63]) Starbuck's per 1000 people near census tracts
-with over 40% of their residents living below the poverty level, while there
-are only 1.02 (95% CI [0.98,1.06]) Starbuck's per 1000 people near census tracts
-with lower rates of poverty.
+There are fewer Starbuck's locations near census tracts with high poverty rates
+than those with low rates, according to analysis in this project. The average number
+of Starbuck's per 1,000 population per square mile in census tracts with high
+poverty is 0.18 (95% CI [0.14, 0.23]) and in census tracts with low poverty
+is 0.32 (95% CI [0.31, 0.34]).
 
 These two rates were found to be statistically significant with over 95%
 confidence using Monte Carlo sampling to perform a permutation test. The

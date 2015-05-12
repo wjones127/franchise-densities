@@ -72,7 +72,8 @@ la.census <- read.csv('census_data/LA_census_2010.csv',
 la.census %<>% 
   # select only Los Angeles County
   filter(Geo_COUNTY == '037') %>%
-  rename(population = SE_T001_001)
+  rename(population = SE_T001_001,
+         area.land = SE_T02A_002)
 
 # Get income census data (from 5-year estimates)
 la.income <- read.csv('census_data/LA_income.csv',
@@ -85,7 +86,7 @@ la.income <- read.csv('census_data/LA_income.csv',
 
 # Combine the two data frames
 la.census %<>% left_join(la.income, by='Geo_FIPS') %>%
-  select(Geo_FIPS, population, pop.poverty)
+  select(Geo_FIPS, population, pop.poverty, area.land)
 
 la.census$Geo_FIPS %<>% as.character()
 
@@ -392,7 +393,7 @@ getLocationCount <- function (row.iter) {
 
 #la.census$sb.count <- loc.count.result
 
-#save(la.census, file='census_with_counts.RData')
+#save(la.census, file='cached_data/census_with_counts.RData')
 load('cached_data/census_with_counts.RData')
 
 qplot(x = la.census$sb.count, main="Histogram of # of Starbuck's",
@@ -654,5 +655,113 @@ It's important to note that these results are not generalizable outside of
 Los Angeles County; all the data examined was limited to that area.
 
 
+## Analysis Round 2
+This is after the due date, but I wanted to follow up on the land area issue.
+
+I mentioned in my previous conclusions from my first analysis that the model I
+used may not be accurate because I failed to account for the difference in size
+between census tracts.
+
+```{r, echo=FALSE, warning=FALSE}
+qplot(y = rate.poverty, x = population / area.land,
+      data = la.census, color = poverty) + 
+  labs(x = 'Population / Land Area',
+       y = 'Rate of Poverty',
+       title = 'Population Density and Rate of Poverty in LA County') + 
+  theme_bw()
+```
+
+There clearly is a relationship between the rate of poverty and population
+density. Furthermore, the average population density for what we labelled as
+higher poverty areas is clearly higher than that of low poverty areas. So the
+assumptions I made in speculating that a model that took into account land
+area are true.
+
+Given their rates of Starbuck's per 1,000 people are equal, we should expect
+that their rates of Starbuck's per 1,000 people per square mile should be
+greater for the census tract with less area. 
+
+Below I have created a model that takes into account the amount of land area
+(so excluding parts that are water) in a census tract. From it we can compute a
+new statistic, the average number of Starbuck's per 1,000 population per square
+mile. 
+
+```{r}
+modelA <- la.census %>% filter(population > 1000 & poverty) %>%
+  glm(sb.count ~ 1, data = ., offset=log(population / area.land), 
+      family=quasipoisson)
+# The average number of Starbucks per 1000 people per sq. mile
+exp(modelA$coefficients)*1000
 
 
+modelB <- la.census %>% filter(population > 1000 & !poverty) %>%
+  glm(sb.count ~ 1, data = ., offset=log(population / area.land), 
+      family=quasipoisson)
+# The average number of Starbucks per 1000 people per sq. mile
+exp(modelB$coefficients)*1000
+```
+
+Here, we get what seems to be a clearly lower rate for high poverty census
+tracts, which aligns with my earlier intuition that the rate should be lower
+for census tracts with greater poverty levels.
+
+As before, we can use a permutation test to determine if these two values have
+a difference that is statistically significant.
+
+```{r, echo=FALSE}
+T_obs <- exp(modelA$coefficients)*1000 - exp(modelB$coefficients)*1000
+
+count <- la.census %>% filter(poverty) %>% count() %>% .$n
+iterations <- 5000
+  
+# Create a column of shuffle-able poverty bool values
+LA.shuffle <- la.census %>%
+  filter(population > 1000) %>%
+  select(poverty, population, sb.count, area.land)
+
+calcCoef <- function (df) {
+  # Computes the average number of Starbucks per 1000 people per sq. mile
+  model <- glm(sb.count ~ 1, data = df, offset = log(population / area.land),
+               family = quasipoisson)
+  return(exp(model$coefficients)*1000)
+}
+
+sampleT <- function (n) {
+  shuffle <- LA.shuffle %>% nrow() %>% sample()
+  LA.shuffle$poverty <- LA.shuffle$poverty[shuffle]
+  
+  lambdaA <- LA.shuffle %>% filter(poverty) %>% calcCoef()
+  lambdaB <- LA.shuffle %>% filter(!poverty) %>% calcCoef()
+  return(lambdaA - lambdaB)
+}
+
+Tvalues <- numeric(length=iterations)
+
+Tvalues <- foreach(i=1:iterations, .combine=c) %dopar% sampleT(count)
+
+qplot(x = Tvalues) + 
+  geom_vline(xintercept=T_obs, color = 'red') + 
+  theme_bw() + 
+  labs(title = "Null Distribution of Poverty - Non-Poverty")
+
+```
+
+The probability of getting a value of $T$ as likely or less likely than our 
+$T_{obs}$ from the null permutation distribution is 
+
+```{r}
+2 * (sum(Tvalues <= T_obs) + 1)/(iterations+1)
+```
+
+Thus, we can say with 99.96% confidence that the two rates are different.
+
+Again, we can find confidence intervals for these rates using bootstrapping.
+
+```{r, warning=FALSE}
+bootstrap.CI(5000)
+```
+
+Thus, with our analyis taking into account for finds that the average number
+of Starbuck's per 1,000 population per square mile in census tracts with high
+poverty is 0.18 (95% CI [0.14, 0.23]) and in census tracts with low poverty
+is 0.32 (95% CI [0.31, 0.34]).
